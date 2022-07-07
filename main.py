@@ -1,4 +1,5 @@
 # bot.py
+import functools
 import os
 import discord
 import random
@@ -7,7 +8,7 @@ import asyncio
 from discord import channel
 from discord.ext import commands
 from discord import FFmpegPCMAudio
-
+from youtube_dl import YoutubeDL
 
 TOKEN = os.environ.get('DISCORD_TOKEN')
 
@@ -15,8 +16,8 @@ client = discord.Client()
 bot = commands.Bot(command_prefix='!')
 
 
-
 youtube_dl.utils.bug_reports_message = lambda: ''
+
 
 ytdl_format_options = {
     'format': 'bestaudio/best',
@@ -31,6 +32,7 @@ ytdl_format_options = {
     'default_search': 'auto',
     'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes
 }
+
 
 ffmpeg_options = {
     'options': '-vn',
@@ -62,7 +64,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
         if 'entries' in data:
-            # take first item from a playlist
             data = data['entries'][0]
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
@@ -88,44 +89,15 @@ class Media(commands.Cog):
                 asyncio.run_coroutine_threadsafe(ctx.voice_client.disconnect(), self.bot.loop)
 
 
-
-    @commands.command()
-    async def join(self, ctx, *, channel: discord.VoiceChannel):
-        """Joins a voice channel"""
-
-        if ctx.voice_client is not None:
-            return await ctx.voice_client.move_to(channel)
-
-        await channel.connect()
-
-
     @commands.command(name='play')
     async def play(self, ctx, *, url):
-        """Streams from a url (same as yt, but doesn't predownload)"""
-
-        async with ctx.typing():
-            player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
-            ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-            await ctx.send(f'Now playing: {player.title}')
-
-
-    @commands.command(name='queue')
-    async def queue(self, ctx, *, url):
         player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
         self.queue.append(player)
         if not ctx.voice_client.is_playing():
             ctx.voice_client.play(player, after=lambda x: self.play_next(ctx, player))
             await ctx.send(f'Now playing: {player.title}')
         else:
-            await ctx.send(f'Song queued')
-
-
-    @commands.command(name='isplay')
-    async def isplay(self, ctx):
-        if ctx.voice_client.is_playing():
-            await ctx.send(f'PLAYING')
-        else:
-            await ctx.send(f'NOT PLAYING')
+            await ctx.send(f'Queued: {player.title} ')
 
 
     @commands.command()
@@ -140,6 +112,8 @@ class Media(commands.Cog):
         """Stops and disconnects the bot from voice"""
         if ctx.voice_client.is_playing():
             ctx.voice_client.pause()
+        else:
+            await ctx.send(f'Bot is not playing')
 
         await ctx.send(f'Paused')
 
@@ -149,12 +123,42 @@ class Media(commands.Cog):
         """Stops and disconnects the bot from voice"""
         if ctx.voice_client.is_paused():
             ctx.voice_client.resume()
+        else:
+            await ctx.send(f'Bot is not paused')
 
         await ctx.send(f'Resumed')
 
 
+    @commands.command(name='skip')
+    async def skip(self, ctx):
+        """" Skip current song """
+
+        if self.queue:
+            ctx.voice_client.pause()
+            self.play_next(ctx, self.queue[0])
+            await ctx.send(f'{self.queue[0].title} skipped')
+        else:
+            await ctx.send('Not playing any song')
+
+
+    @commands.command(name='show')
+    async def show_queue(self, ctx):
+        """" Show the current queue """
+
+        if self.queue:
+            title_queue = {index + 1: item.title for index, item in enumerate(self.queue)}
+            embed = discord.Embed(title="Song Queue", color=0xFF5733)
+
+            for k, v in title_queue.items():
+                embed.add_field(name=f'Position {k}', value=v, inline=False)
+
+            await ctx.send(embed=embed)
+
+        else:
+            await ctx.send('Not songs in queue')
+
+
     @play.before_invoke
-    @queue.before_invoke
     async def ensure_voice(self, ctx):
         if ctx.voice_client is None:
             if ctx.author.voice:
@@ -162,14 +166,23 @@ class Media(commands.Cog):
             else:
                 await ctx.send("You are not connected to a voice channel.")
                 raise commands.CommandError("Author not connected to a voice channel.")
-        # elif ctx.voice_client.is_playing():
-        #     ctx.voice_client.stop()
 
 
 class Utility(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+
+
+    @commands.command(name='join')
+    async def join(self, ctx, *, channel: discord.VoiceChannel = None):
+        """Join the channel provided, if none join author channel"""
+
+        if ctx.voice_client is not None and channel is not None:
+            return await ctx.voice_client.move_to(channel)
+        else:
+            await ctx.author.voice.channel.connect()
+
 
     @commands.command(name='99')
     async def on_message(self, ctx):
@@ -184,9 +197,11 @@ class Utility(commands.Cog):
         response = random.choice(brooklyn_99_quotes)
         await ctx.send(response)
 
+
     @commands.command(name='ping')
     async def ping(self, ctx):
         await ctx.send(f"Pong! {round(bot.latency * 1000)}ms")
+
 
     @commands.command(name='clear')
     async def clear(self, ctx):
