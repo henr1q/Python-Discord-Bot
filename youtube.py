@@ -1,5 +1,4 @@
 import youtube_dl
-from youtube_dl import YoutubeDL
 import asyncio
 import discord
 
@@ -22,7 +21,8 @@ ytdl_format_options = {
 
 
 ffmpeg_options = {
-    'options': '-vn',
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+    'options': ['-vn', '-sn', '-dn', '-ignore_unknown']
 }
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)

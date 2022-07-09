@@ -1,6 +1,5 @@
 import os
 import discord
-import random
 import asyncio
 from discord.ext import commands
 from youtube import YTDLSource
@@ -10,7 +9,8 @@ import random
 TOKEN = os.environ.get('DISCORD_TOKEN')
 
 client = discord.Client()
-bot = commands.Bot(command_prefix='!')
+activity = discord.Activity(type=discord.ActivityType.listening, name="Vibin")
+bot = commands.Bot(command_prefix="!", activity=activity, status=discord.Status.idle)
 
 class Media(commands.Cog):
 
@@ -26,6 +26,7 @@ class Media(commands.Cog):
             try:
                 song = self.queue[0]
                 ctx.voice_client.play(song, after=lambda e: self.play_next(ctx, player))
+                ctx.send(f'Now playing: {song.title}')
             except:
                 asyncio.run_coroutine_threadsafe(ctx.send("No more songs in queue."), self.bot.loop)
                 asyncio.run_coroutine_threadsafe(ctx.voice_client.disconnect(), self.bot.loop)
@@ -33,6 +34,7 @@ class Media(commands.Cog):
 
     @commands.command(name='play')
     async def play(self, ctx, *, url):
+        """" Play songs and add to queue """
         player = None
 
         try:
@@ -51,6 +53,7 @@ class Media(commands.Cog):
 
     @commands.command(name='playlist')
     async def playlist(self, ctx, *, url):
+        """ Same as play, but for playlists """
 
         try:
             self.queue = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True, mode_playlist=True)
@@ -68,14 +71,14 @@ class Media(commands.Cog):
 
     @commands.command()
     async def stop(self, ctx):
-        """Stops and disconnects the bot from voice"""
+        """ Stops and disconnects the bot from voice """
 
         await ctx.voice_client.disconnect()
 
 
     @commands.command(name='clear')
     async def clear(self, ctx):
-        """Clear the current queue"""
+        """ Clear the current queue """
         leng = len(self.queue)
         self.queue.clear()
 
@@ -91,7 +94,7 @@ class Media(commands.Cog):
 
     @commands.command()
     async def pause(self, ctx):
-        """Stops and disconnects the bot from voice"""
+        """ Pause the current song """
         if ctx.voice_client.is_playing():
             ctx.voice_client.pause()
         else:
@@ -102,7 +105,7 @@ class Media(commands.Cog):
 
     @commands.command()
     async def resume(self, ctx):
-        """Stops and disconnects the bot from voice"""
+        """ Stops and disconnects the bot from voice """
         if ctx.voice_client.is_paused():
             ctx.voice_client.resume()
         else:
@@ -130,7 +133,7 @@ class Media(commands.Cog):
         if self.queue:
             title_queue = {index: item.title for index, item in enumerate(self.queue)}
             embed = discord.Embed(title=f"Music Queue", color=0xFF5733)
-            title_queue.pop(1)
+            title_queue.pop(0)
 
             for k, v in title_queue.items():
                 embed.add_field(name=f'Position {k}', value=v, inline=False)
@@ -144,6 +147,7 @@ class Media(commands.Cog):
     @play.before_invoke
     @playlist.before_invoke
     async def ensure_voice(self, ctx):
+        """" Ensure that the bot is connected to a voice channel before tries playing a song """
         if ctx.voice_client is None:
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
@@ -183,15 +187,14 @@ class Utility(commands.Cog):
 
     @commands.command(name='erase')
     async def erase(self, ctx):
+        """" Delete the last 100 messages on the channel that it is used """
         deleted = await ctx.channel.purge(limit=100)
         await ctx.send(f'Deleted {len(deleted)} message(s)')
 
 
 @bot.event
 async def on_ready():
-    activity_type = discord.ActivityType.listening
-    await bot.change_presence(activity=discord.Activity(type=activity_type, name="Vibin"))
-    print(f'Logged in as {bot.user} (ID: {bot.user.id})')
+    print(f'{bot.user} is ON!')
 
 
 bot.add_cog(Media(bot))
