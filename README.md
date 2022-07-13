@@ -1,4 +1,4 @@
-# Python-Discord-Bot
+# Python Discord Bot
 Simple bot for discord.  
 
 # Features 
