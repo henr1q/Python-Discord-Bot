@@ -243,11 +243,13 @@ class Clima(commands.Cog):
                 state = coord['state']
                 clima = get_clima(lat, lon)
                 graus = clima['temp']
+                humidity = clima['humidity']
                 desc = clima['desc']
 
-                embed = discord.Embed(title=f'Clima em {name}, {state}', color=0x3254a8)
+                embed = discord.Embed(title=f'Weather in {name}, {state}', color=0x3254a8)
                 embed.add_field(name='Description', value=desc.capitalize(), inline=False)
-                embed.add_field(name='Temperature(C)', value=f'{graus} °C', inline=False)
+                embed.add_field(name='Temperature (C)', value=f'{graus} °C', inline=False)
+                embed.add_field(name='Humidity', value=f'{humidity}%', inline=False)
                 embed.set_thumbnail(url='https://images-na.ssl-images-amazon.com/images/I/51ljr9z1+RL.png')
                 await ctx.send(embed=embed)
 
