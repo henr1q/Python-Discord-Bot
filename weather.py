@@ -10,7 +10,7 @@ def get_coord(city):
 
     city_name = city
     state_code = ''
-    country_code = 'BR'
+    country_code = 'BR'  # set your country code
     limit = 1
 
 
@@ -34,7 +34,7 @@ def get_clima(lat, lon):
     parameters = {
         'lat': lat,
         'lon': lon,
-        'lang': 'pt_br',
+        # 'lang': 'pt_br',  # set your lang
         'appid': API_TOKEN,
         'units': 'Metric'
     }

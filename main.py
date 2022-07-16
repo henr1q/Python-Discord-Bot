@@ -15,6 +15,8 @@ bot = commands.Bot(command_prefix="!", activity=activity, status=discord.Status.
 
 
 def g_embed(color, message, title=None):
+    """ Function to help generate embeds """
+
     colors = {'red': 0x5c1313, 'green': 0x3AFF33, 'blue': 0x0e0e52, 'yellow': 0x99a140}
 
     if not title:
@@ -25,6 +27,7 @@ def g_embed(color, message, title=None):
         return embed
 
 class Media(commands.Cog):
+    """ Cog for Media Commands """
 
     def __init__(self, bot):
         self.bot = bot
@@ -32,6 +35,7 @@ class Media(commands.Cog):
 
 
     def play_next(self, ctx, player):
+        """ Function to play next songs and run queue as loop """
         if len(self.queue) >= 1:
             self.queue.pop(0)
 
@@ -197,14 +201,6 @@ class Utility(commands.Cog):
             await ctx.author.voice.channel.connect()
 
 
-    @commands.command(name='rad')
-    async def on_message(self, ctx):
-
-        name = str(ctx.message.author)
-        response = random.randint(1, 100)
-        await ctx.send(f'{name} tem {response}% de chance de pegar radiante')
-
-
     @commands.command(name='ping')
     async def ping(self, ctx):
         embed = g_embed('yellow', f"Pong! {round(bot.latency * 1000)}ms")
@@ -226,6 +222,8 @@ class Clima(commands.Cog):
 
     @commands.command(name='clima')
     async def on_message(self, ctx):
+        """ Return the current weather if a member says: !clima {city} """
+
         msg = ctx.message.content
 
         city = msg[7:]
@@ -256,7 +254,6 @@ class Clima(commands.Cog):
             else:
                 embed = g_embed('red', 'A error occurred')
                 await ctx.send(embed=embed)
-
 
 
 @bot.event
