@@ -226,7 +226,7 @@ class Clima(commands.Cog):
     @commands.command(name='clima')
     async def on_message(self, ctx):
         """ Return the current weather. !clima {city} """
-
+        start = time.time()
         msg = ctx.message.content
 
         city = msg[7:]
@@ -236,7 +236,6 @@ class Clima(commands.Cog):
             await ctx.send(embed=embed)
         else:
             coord = get_coord(city)
-
             if coord:
                 lat = coord['lat']
                 lon = coord['lon']
@@ -255,9 +254,11 @@ class Clima(commands.Cog):
                 await ctx.send(embed=embed)
 
             else:
-                embed = g_embed('red', 'A error occurred')
+                embed = g_embed('red', 'Invalid city name')
                 await ctx.send(embed=embed)
 
+        end = time.time()
+        print(f'{end - start} seconds to run')
 
 class Fun(commands.Cog):
 

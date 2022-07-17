@@ -1,6 +1,7 @@
 import json
-import requests
+import aiohttp
 import os
+import requests
 import asyncio
 
 API_TOKEN = os.environ.get('WEATHER_TOKEN')
@@ -16,15 +17,17 @@ def get_coord(city):
 
     url = f'http://api.openweathermap.org/geo/1.0/direct?q={city_name},{state_code},{country_code}&limit={limit}&appid={API_TOKEN}'
 
-
     data = requests.get(url,)
     if data.status_code == 200:
         data = data.json()
-        name = data[0]['name']
-        lat = data[0]['lat']
-        lon = data[0]['lon']
-        state = data[0]['state']
-        return {'name': name, 'lat': lat, 'lon': lon, 'state': state}
+        if data:
+            name = data[0]['name']
+            lat = data[0]['lat']
+            lon = data[0]['lon']
+            state = data[0]['state']
+            return {'name': name, 'lat': lat, 'lon': lon, 'state': state}
+        else:
+            return 0
     else:
         return f'API returned: code {data.status_code}'
 
