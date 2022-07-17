@@ -4,10 +4,13 @@ import asyncio
 from discord.ext import commands
 from youtube import YTDLSource
 import random
+import time
+import aiohttp
 from weather import get_coord, get_clima
 
 
 TOKEN = os.environ.get('DISCORD_TOKEN')
+CAT_TOKEN = os.environ.get('CAT_TOKEN')
 
 client = discord.Client()
 activity = discord.Activity(type=discord.ActivityType.listening, name="Vibin")
@@ -144,7 +147,7 @@ class Media(commands.Cog):
 
     @commands.command(name='skip', aliases=['SKIP', 'Skip'])
     async def skip(self, ctx):
-        """" Skip current song """
+        """ Skip current song """
 
         if self.queue:
             ctx.voice_client.pause()
@@ -156,7 +159,7 @@ class Media(commands.Cog):
 
     @commands.command(name='queue')
     async def show_queue(self, ctx):
-        """" Show the current queue """
+        """ Show the current queue """
 
         if self.queue:
             title_queue = {index: item.title for index, item in enumerate(self.queue)}
@@ -176,7 +179,7 @@ class Media(commands.Cog):
     @play.before_invoke
     @playlist.before_invoke
     async def ensure_voice(self, ctx):
-        """" Ensure that the bot is connected to a voice channel before tries playing a song """
+        """ Ensure that the bot is connected to a voice channel before tries playing a song """
         if ctx.voice_client is None:
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
@@ -222,7 +225,7 @@ class Clima(commands.Cog):
 
     @commands.command(name='clima')
     async def on_message(self, ctx):
-        """ Return the current weather if a member says: !clima {city} """
+        """ Return the current weather. !clima {city} """
 
         msg = ctx.message.content
 
@@ -256,6 +259,25 @@ class Clima(commands.Cog):
                 await ctx.send(embed=embed)
 
 
+class Fun(commands.Cog):
+
+    def __init__(self, bot):
+        self.bot = bot
+
+
+    @commands.command(name='cat')
+    async def cat(self, ctx):
+
+        url = 'https://api.thecatapi.com/v1/images/search'
+
+        async with aiohttp.ClientSession() as session:
+            response = await session.get(url, headers={"x-api-key": CAT_TOKEN}, ssl=False)
+            data = await response.json()
+            img = data[0]['url']
+
+        await ctx.send(img)
+
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} is ON!')
@@ -264,6 +286,7 @@ async def on_ready():
 bot.add_cog(Media(bot))
 bot.add_cog(Utility(bot))
 bot.add_cog(Clima(bot))
+bot.add_cog(Fun(bot))
 bot.run(TOKEN)
 
 
