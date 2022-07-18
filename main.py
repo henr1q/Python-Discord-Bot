@@ -34,16 +34,20 @@ class Media(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.guilds = {}
         self.queue = []
 
 
     def play_next(self, ctx, player):
         """ Function to play next songs and run queue as loop """
-        if len(self.queue) >= 1:
-            self.queue.pop(0)
+
+        server = ctx.guild.id
+
+        if len(self.guilds[server]):
+            self.guilds[server].pop(0)
 
             try:
-                song = self.queue[0]
+                song = self.guilds[server][0]
                 ctx.voice_client.play(song, after=lambda e: self.play_next(ctx, player))
                 embed = discord.Embed(title=f"Now Playing", description=f'{song.title}', color=0x3AFF33)
                 asyncio.run_coroutine_threadsafe(ctx.send(embed=embed), self.bot.loop)
@@ -58,7 +62,7 @@ class Media(commands.Cog):
     async def play(self, ctx, *, url):
         """" Play songs and add to queue """
         player = None
-        server = ctx.guild
+        server = ctx.guild.id
 
         try:
             player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
@@ -66,8 +70,11 @@ class Media(commands.Cog):
             embed = g_embed('red', "Couldn't queue the song")
             await ctx.send(embed=embed)
 
+        if server not in self.guilds:
+            self.guilds[server] = []
+
         if player:
-            self.queue.append(player)
+            self.guilds[server].append(player)
             if not ctx.voice_client.is_playing():
                 ctx.voice_client.play(player, after=lambda x: self.play_next(ctx, player))
                 embed = g_embed('green', player.title, title='Now playing')
@@ -77,6 +84,8 @@ class Media(commands.Cog):
                 await ctx.send(embed=embed)
 
 
+
+    # TODO: fix this for guilds
     @commands.command(name='playlist')
     async def playlist(self, ctx, *, url):
         """ Same as play, but for playlists """
@@ -97,10 +106,14 @@ class Media(commands.Cog):
                 # FIX THIS
                 await ctx.send(f'IDK')
 
-
     @commands.command()
     async def stop(self, ctx):
         """ Stops and disconnects the bot from voice """
+
+        server = ctx.guild.id
+        if len(self.guilds[server]):
+            self.guilds[server].clear()
+
 
         await ctx.voice_client.disconnect()
 
@@ -108,19 +121,22 @@ class Media(commands.Cog):
     @commands.command(name='clear')
     async def clear(self, ctx):
         """ Clear the current queue """
-        leng = len(self.queue)
-        self.queue.clear()
+        server = ctx.guild.id
+        leng = len(self.guilds[server])
+        self.guilds[server].clear()
         embed = g_embed('red', f'{leng} Songs removed from queue')
 
         await ctx.send(embed=embed)
 
 
-    @commands.command(name='current')
+    @commands.command(name='now', aliases=['Now', 'current'])
     async def current(self, ctx):
         """Show the current song playing"""
 
-        if self.queue:
-            embed = discord.Embed(title=f"Now Playing", description=f'{self.queue[0].title}', color=0x3AFF33)
+        server = ctx.guild.id
+
+        if len(self.guilds[server]):
+            embed = discord.Embed(title=f"Now Playing", description=f'{self.guilds[server][0].title}', color=0x3AFF33)
             await ctx.send(embed=embed)
         else:
             await ctx.send(f"Bot isn't playing any song")
@@ -151,11 +167,12 @@ class Media(commands.Cog):
     @commands.command(name='skip', aliases=['SKIP', 'Skip'])
     async def skip(self, ctx):
         """ Skip current song """
+        server = ctx.guild.id
 
-        if self.queue:
+        if len(self.guilds[server]):
             ctx.voice_client.pause()
-            await ctx.send(f'{self.queue[0].title} skipped')
-            self.play_next(ctx, self.queue[0])
+            await ctx.send(f'{self.guilds[server][0].title} skipped')
+            self.play_next(ctx, self.guilds[server][0])
         else:
             await ctx.send('Not playing any song')
 
@@ -164,8 +181,10 @@ class Media(commands.Cog):
     async def show_queue(self, ctx):
         """ Show the current queue """
 
-        if self.queue:
-            title_queue = {index: item.title for index, item in enumerate(self.queue)}
+        server = ctx.guild.id
+
+        if len(self.guilds[server]) > 1:
+            title_queue = {index: item.title for index, item in enumerate(self.guilds[server])}
             embed = discord.Embed(title=f"Music Queue", color=0xFF5733)
             embed.set_thumbnail(url='https://i.imgur.com/A9O7sye.jpeg')
             title_queue.pop(0)
