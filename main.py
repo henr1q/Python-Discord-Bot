@@ -48,14 +48,17 @@ class Media(commands.Cog):
                 embed = discord.Embed(title=f"Now Playing", description=f'{song.title}', color=0x3AFF33)
                 asyncio.run_coroutine_threadsafe(ctx.send(embed=embed), self.bot.loop)
             except:
-                asyncio.run_coroutine_threadsafe(ctx.send("No more songs in queue."), self.bot.loop)
-                asyncio.run_coroutine_threadsafe(ctx.voice_client.disconnect(), self.bot.loop)
+                embed = g_embed('blue', message="No more songs in queue.")
+                asyncio.run_coroutine_threadsafe(ctx.send(embed=embed), self.bot.loop)
+                if ctx.voice_client:
+                    asyncio.run_coroutine_threadsafe(ctx.voice_client.disconnect(), self.bot.loop)
 
 
-    @commands.command(name='play')
+    @commands.command(name='play', aliases=['PLAY', 'Play'])
     async def play(self, ctx, *, url):
         """" Play songs and add to queue """
         player = None
+        server = ctx.guild
 
         try:
             player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
@@ -265,6 +268,7 @@ class Fun(commands.Cog):
 
     @commands.command(name='cat')
     async def cat(self, ctx):
+        """ Generate random cat imgs/gifs """
 
         url = 'https://api.thecatapi.com/v1/images/search'
 
@@ -275,6 +279,19 @@ class Fun(commands.Cog):
 
         await ctx.send(img)
 
+
+    @commands.command(name='dog')
+    async def dog(self, ctx):
+        """ Generate random dogs imgs/gifs """
+
+        url = 'https://dog.ceo/api/breeds/image/random'
+
+        async with aiohttp.ClientSession() as session:
+            response = await session.get(url, ssl=False)
+            data = await response.json()
+            img = data['message']
+
+        await ctx.send(img)
 
 @bot.event
 async def on_ready():
