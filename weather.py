@@ -6,30 +6,29 @@ import asyncio
 
 API_TOKEN = os.environ.get('WEATHER_TOKEN')
 
-
-def get_coord(city):
+async def get_coord(city):
 
     city_name = city
     state_code = ''
     country_code = 'BR'  # set your country code
     limit = 1
 
-
     url = f'http://api.openweathermap.org/geo/1.0/direct?q={city_name},{state_code},{country_code}&limit={limit}&appid={API_TOKEN}'
 
-    data = requests.get(url,)
-    if data.status_code == 200:
-        data = data.json()
-        if data:
-            name = data[0]['name']
-            lat = data[0]['lat']
-            lon = data[0]['lon']
-            state = data[0]['state']
-            return {'name': name, 'lat': lat, 'lon': lon, 'state': state}
+    async with aiohttp.ClientSession() as session:
+        response = await session.get(url, ssl=False)
+        if response.status == 200:
+            data = await response.json()
+            if data:
+                name = data[0]['name']
+                lat = data[0]['lat']
+                lon = data[0]['lon']
+                state = data[0]['state']
+                return {'name': name, 'lat': lat, 'lon': lon, 'state': state}
+            else:
+                return 0
         else:
             return 0
-    else:
-        return f'API returned: code {data.status_code}'
 
 
 def get_clima(lat, lon):
