@@ -8,14 +8,15 @@ import time
 import aiohttp
 from weather import get_coord, get_clima
 
+# TODO: FIX DOCSTRINGS
 
 TOKEN = os.environ.get('DISCORD_TOKEN')
 CAT_TOKEN = os.environ.get('CAT_TOKEN')
 
 client = discord.Client()
 activity = discord.Activity(type=discord.ActivityType.listening, name="Vibin")
-bot = commands.Bot(command_prefix="!", activity=activity, status=discord.Status.idle)
-
+bot = commands.Bot(command_prefix="!", activity=activity, help_command=None)
+prefix = '!'
 
 def g_embed(color, message, title=None):
     """ Function to help generate embeds """
@@ -30,7 +31,7 @@ def g_embed(color, message, title=None):
         return embed
 
 class Media(commands.Cog):
-    """ Cog for Media Commands """
+    """ Media related commands """
 
     def __init__(self, bot):
         self.bot = bot
@@ -60,7 +61,7 @@ class Media(commands.Cog):
 
     @commands.command(name='play', aliases=['PLAY', 'Play'])
     async def play(self, ctx, *, url):
-        """" Play songs and add to queue """
+        """ Play songs and add to queue. Usage: play <URL or Search query>"""
         player = None
         server = ctx.guild.id
 
@@ -84,11 +85,10 @@ class Media(commands.Cog):
                 await ctx.send(embed=embed)
 
 
-
     # TODO: fix this for guilds
     @commands.command(name='playlist')
     async def playlist(self, ctx, *, url):
-        """ Same as play, but for playlists """
+        """ Same as play, but for playlists. Usage: playlist <playlist URL> """
 
         try:
             self.queue.extend(await YTDLSource.from_url(url, loop=self.bot.loop, stream=True, mode_playlist=True))
@@ -105,6 +105,7 @@ class Media(commands.Cog):
             else:
                 # FIX THIS
                 await ctx.send(f'IDK')
+
 
     @commands.command()
     async def stop(self, ctx):
@@ -123,15 +124,18 @@ class Media(commands.Cog):
         """ Clear the current queue """
         server = ctx.guild.id
         leng = len(self.guilds[server])
-        self.guilds[server].clear()
-        embed = g_embed('red', f'{leng} Songs removed from queue')
+        if leng:
+            self.guilds[server].clear()
+            embed = g_embed('red', f'{leng} Songs removed from queue')
+        else:
+            embed = g_embed('red', f'{leng} No songs in queue')
 
         await ctx.send(embed=embed)
 
 
     @commands.command(name='now', aliases=['Now', 'current'])
     async def current(self, ctx):
-        """Show the current song playing"""
+        """ Show the current song playing"""
 
         server = ctx.guild.id
 
@@ -171,6 +175,7 @@ class Media(commands.Cog):
 
         if len(self.guilds[server]):
             ctx.voice_client.pause()
+            # TODO: embed this
             await ctx.send(f'{self.guilds[server][0].title} skipped')
             self.play_next(ctx, self.guilds[server][0])
         else:
@@ -195,6 +200,7 @@ class Media(commands.Cog):
             await ctx.send(embed=embed)
 
         else:
+            # TODO: EMBED THIS
             await ctx.send('Not songs in queue')
 
 
@@ -211,6 +217,7 @@ class Media(commands.Cog):
 
 
 class Utility(commands.Cog):
+    """ Utility related commands """
 
     def __init__(self, bot):
         self.bot = bot
@@ -218,7 +225,7 @@ class Utility(commands.Cog):
 
     @commands.command(name='join', aliases=['Join', 'JOIN'])
     async def join(self, ctx, *, channel: discord.VoiceChannel = None):
-        """Join the channel provided, if none join author channel"""
+        """Join the channel provided, if none join author channel . Usage: Join <optional:voice channel name>"""
 
         if ctx.voice_client is not None and channel is not None:
             return await ctx.voice_client.move_to(channel)
@@ -228,7 +235,7 @@ class Utility(commands.Cog):
 
     @commands.command(name='ping')
     async def ping(self, ctx):
-        embed = g_embed('yellow', f"Pong! {round(bot.latency * 1000)}ms")
+        embed = g_embed('yellow', f"Pong! {round(self.bot.latency * 1000)}ms")
         await ctx.send(embed=embed)
 
 
@@ -240,6 +247,7 @@ class Utility(commands.Cog):
 
 
 class Clima(commands.Cog):
+    """ Clima related commands """
 
     def __init__(self, bot):
         self.bot = bot
@@ -247,7 +255,7 @@ class Clima(commands.Cog):
 
     @commands.command(name='clima')
     async def on_message(self, ctx):
-        """ Return the current weather. !clima {city} """
+        """ Return the current weather. usage: !clima <city name> """
 
         msg = ctx.message.content
         city = msg[7:]
@@ -280,6 +288,7 @@ class Clima(commands.Cog):
 
 
 class Fun(commands.Cog):
+    """ Fun related commands """
 
     def __init__(self, bot):
         self.bot = bot
@@ -287,7 +296,7 @@ class Fun(commands.Cog):
 
     @commands.command(name='cat')
     async def cat(self, ctx):
-        """ Generate random cat imgs/gifs """
+        """ Generate random cat imgs/gifs. """
 
         url = 'https://api.thecatapi.com/v1/images/search'
 
@@ -312,6 +321,40 @@ class Fun(commands.Cog):
 
         await ctx.send(img)
 
+
+class Help(commands.Cog):
+    """ Help related commands """
+
+    def __init__(self, bot):
+        self.bot = bot
+
+
+    @commands.command(name='help', aliases=['Help', 'HELP'])
+    async def show_help(self, ctx, *args):
+        """ Show all commands. Usage: help <optional:command name> """
+
+        prefix = '!'
+
+        embed = discord.Embed(title='Your guide', color=0x32a875, description=f'To see the usage of a command, use: {prefix}help <command name>')
+        cogs_names = [cog for cog in self.bot.cogs]
+        cogs = [bot.get_cog(cog) for cog in cogs_names]
+        dict_from_list = dict(zip(cogs, cogs_names))
+
+        cog_commands = {dict_from_list[cog]:[f'{prefix}{c.name}' for c in cog.get_commands()] for cog in cogs}
+
+        for module, coms in cog_commands.items():
+            embed.add_field(name=f'`{module}`', value=f'{",  ".join(coms)}', inline=False)
+
+
+        if len(args) == 1:
+            embed = discord.Embed(title=f'{prefix}{args[0]}', description=f'{self.bot.get_command(args[0]).help}', color=0x0388fc)
+
+
+        await ctx.send(embed=embed)
+
+
+
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} is ON!')
@@ -321,6 +364,7 @@ bot.add_cog(Media(bot))
 bot.add_cog(Utility(bot))
 bot.add_cog(Clima(bot))
 bot.add_cog(Fun(bot))
+bot.add_cog(Help(bot))
 bot.run(TOKEN)
 
 
